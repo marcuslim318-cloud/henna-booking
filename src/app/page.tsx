@@ -4,11 +4,49 @@ import { useEffect, useState } from "react";
 import { bookingDates, noticeItems, products } from "@/lib/config";
 
 type Order = { id: number; appointment_date: string; product_name: string | null; price: string | null; custom_image_path: string | null; custom_image_url?: string; name: string; phone: string; status: string; created_at: string };
+const maxImageSize = 2.5 * 1024 * 1024;
 
 async function readResponse(response: Response) {
   const text = await response.text();
   try { return text ? JSON.parse(text) : { error: `服务器没有返回有效响应（${response.status}），请稍后重试。` }; }
   catch { return { error: `服务器返回了无效响应（${response.status}），请稍后重试。` }; }
+}
+
+function readImage(file: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("图片读取失败，请重新选择图片。"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function prepareImage(file: File) {
+  if (file.size <= maxImageSize) return readImage(file);
+  if (file.type === "image/gif") throw new Error("GIF 图片超过 2.5 MB，请压缩后再上传。");
+
+  const image = await createImageBitmap(file);
+  try {
+    for (const maxSide of [1600, 1200]) {
+      const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("图片压缩失败，请换一张图片重试。");
+      context.fillStyle = "#fff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      for (const quality of [0.82, 0.72, 0.62]) {
+        const compressed = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/jpeg", quality));
+        if (compressed && compressed.size <= maxImageSize) return readImage(compressed);
+      }
+    }
+  } finally {
+    image.close();
+  }
+  throw new Error("图片压缩后仍过大，请选择较小的图片。");
 }
 
 function getDeviceId() {
@@ -56,12 +94,7 @@ export default function Home() {
     try {
       let imageData: string | null = null;
       if (customImage) {
-          imageData = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result));
-          reader.onerror = () => reject(new Error("图片读取失败"));
-          reader.readAsDataURL(customImage);
-        });
+        imageData = await prepareImage(customImage);
       }
       const response = await fetch("/api/bookings", {
         method: "POST",
