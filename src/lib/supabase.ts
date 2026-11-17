@@ -1,9 +1,9 @@
-const baseUrl = process.env.SUPABASE_URL;
+export const supabaseUrl = process.env.SUPABASE_URL?.trim().replace(/\/rest\/v1\/?$/, "").replace(/\/+$/, "");
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export async function db<T>(path: string, init: RequestInit = {}): Promise<T> {
-  if (!baseUrl || !serviceKey) throw new Error("Supabase environment variables are missing");
-  const response = await fetch(`${baseUrl}/rest/v1/${path}`, {
+  if (!supabaseUrl || !serviceKey) throw new Error("Supabase environment variables are missing");
+  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
     ...init,
     cache: "no-store",
     headers: {
@@ -19,8 +19,8 @@ export async function db<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export async function storage(path: string, init: RequestInit = {}) {
-  if (!baseUrl || !serviceKey) throw new Error("Supabase environment variables are missing");
-  const response = await fetch(`${baseUrl}/storage/v1/${path}`, {
+  if (!supabaseUrl || !serviceKey) throw new Error("Supabase environment variables are missing");
+  const response = await fetch(`${supabaseUrl}/storage/v1/${path}`, {
     ...init,
     cache: "no-store",
     headers: {

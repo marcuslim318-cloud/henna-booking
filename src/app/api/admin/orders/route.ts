@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/admin";
-import { db, storage } from "@/lib/supabase";
+import { db, storage, supabaseUrl } from "@/lib/supabase";
 
 export async function GET() {
   if (!isAdmin()) return NextResponse.json({ error: "请先登录管理员账号。" }, { status: 401 });
@@ -15,7 +15,7 @@ export async function GET() {
       if (!order.custom_image_path) return order;
       try {
         const signed = await storage(`object/sign/henna-orders/${order.custom_image_path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expiresIn: 900 }) });
-        return { ...order, custom_image_url: `${process.env.SUPABASE_URL}/storage/v1${signed.signedURL}` };
+        return { ...order, custom_image_url: `${supabaseUrl}/storage/v1${signed.signedURL}` };
       } catch { return order; }
     }));
     return NextResponse.json({ orders: withImages, stats });
