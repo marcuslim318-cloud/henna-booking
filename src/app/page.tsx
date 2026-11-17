@@ -5,6 +5,12 @@ import { bookingDates, noticeItems, products } from "@/lib/config";
 
 type Order = { id: number; appointment_date: string; product_name: string | null; price: string | null; custom_image_path: string | null; custom_image_url?: string; name: string; phone: string; status: string; created_at: string };
 
+async function readResponse(response: Response) {
+  const text = await response.text();
+  try { return text ? JSON.parse(text) : { error: `服务器没有返回有效响应（${response.status}），请稍后重试。` }; }
+  catch { return { error: `服务器返回了无效响应（${response.status}），请稍后重试。` }; }
+}
+
 function getDeviceId() {
   let id = localStorage.getItem("henna_device_id");
   if (!id) {
@@ -37,7 +43,7 @@ export default function Home() {
     setBusy(true); setError("");
     try {
       const response = await fetch("/api/orders", { headers: { "x-device-id": getDeviceId() } });
-      const data = await response.json();
+      const data = await readResponse(response);
       if (!response.ok) throw new Error(data.error || "暂时无法读取订单");
       setOrders(data.orders);
       setStep("orders");
@@ -62,7 +68,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json", "x-device-id": getDeviceId() },
         body: JSON.stringify({ appointmentDate: date, productId: choice || null, imageData, name, phone })
       });
-      const data = await response.json();
+      const data = await readResponse(response);
       if (!response.ok) throw new Error(data.error || "预约提交失败");
       setOrder(data.order); sessionStorage.setItem("henna_last_order", JSON.stringify(data.order)); setStep("success");
     } catch (e) { setError(e instanceof Error ? e.message : "预约提交失败"); }
