@@ -6,6 +6,11 @@ type Order = { id: number; appointment_date: string; product_name: string | null
 type Stats = { total: number; booked: number; completed: number; cancelled: number; no_show: number };
 const labels: Record<string, string> = { booked: "待处理", completed: "已完成", cancelled: "已取消", no_show: "未到场" };
 
+async function readResponse(response: Response) {
+  try { return await response.json(); }
+  catch { return { error: `服务器暂时没有返回有效响应（${response.status}）。请检查 Vercel Functions 日志。` }; }
+}
+
 export default function Admin() {
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
@@ -19,7 +24,7 @@ export default function Admin() {
     if (!quiet) setBusy(true);
     try {
       const response = await fetch("/api/admin/orders", { cache: "no-store" });
-      const data = await response.json();
+      const data = await readResponse(response);
       if (response.status === 401) { setLoggedIn(false); return; }
       if (!response.ok) throw new Error(data.error || "读取订单失败");
       setOrders(data.orders); setStats(data.stats); setLoggedIn(true); setError("");
@@ -33,7 +38,7 @@ export default function Admin() {
     event.preventDefault(); setBusy(true); setError("");
     try {
       const response = await fetch("/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password }) });
-      const data = await response.json();
+      const data = await readResponse(response);
       if (!response.ok) throw new Error(data.error || "登录失败");
       setPassword(""); await refresh(true);
     } catch (e) { setError(e instanceof Error ? e.message : "登录失败"); }
@@ -45,7 +50,7 @@ export default function Admin() {
     setBusy(true); setError("");
     try {
       const response = await fetch(`/api/admin/orders/${order.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
-      const data = await response.json();
+      const data = await readResponse(response);
       if (!response.ok) throw new Error(data.error || "更新失败");
       await refresh(true);
     } catch (e) { setError(e instanceof Error ? e.message : "更新失败"); }
