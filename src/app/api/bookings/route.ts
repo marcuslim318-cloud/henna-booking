@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const [order] = await db<any[]>("rpc/create_booking", {
       method: "POST",
       headers: { Prefer: "return=representation" },
-      body: JSON.stringify({ p_device_id: deviceId, p_appointment_date: appointmentDate, p_product_id: product?.id || null, p_product_name: product?.name || null, p_price: product?.price || null, p_custom_image_path: customImagePath, p_name: name.trim(), p_phone: phone.trim() })
+      body: JSON.stringify({ p_device_id: deviceId, p_appointment_date: appointmentDate, p_product_id: product?.id || null, p_product_name: product?.orderName || null, p_price: product?.price || null, p_custom_image_path: customImagePath, p_name: name.trim(), p_phone: phone.trim() })
     });
     return NextResponse.json({ order });
   } catch (error) {

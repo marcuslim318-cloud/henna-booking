@@ -4,7 +4,7 @@ import { db, storage } from "@/lib/supabase";
 export async function GET(request: NextRequest) {
   const deviceId = request.headers.get("x-device-id") || "";
   if (!/^[0-9a-f-]{36}$/i.test(deviceId)) return NextResponse.json({ error: "设备信息无效。" }, { status: 400 });
-  const orders = await db<any[]>(`orders?device_id=eq.${encodeURIComponent(deviceId)}&select=id,appointment_date,product_name,price,custom_image_path,name,phone,status,created_at&order=id.desc`);
+  const orders = await db<any[]>(`orders?device_id=eq.${encodeURIComponent(deviceId)}&select=id,appointment_date,product_id,product_name,price,custom_image_path,name,phone,status,created_at&order=id.desc`);
   const withImages = await Promise.all(orders.map(async order => {
     if (!order.custom_image_path) return order;
     try {
