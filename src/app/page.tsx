@@ -119,7 +119,50 @@ export default function Home() {
       <h2>自定义图片 <small>可选</small></h2><label className={`upload-box ${customImage ? "uploaded" : ""}`}><input type="file" accept="image/*" onChange={e => { const file = e.target.files?.[0] || null; setCustomImage(file); if (file) setChoice(""); }} /><span className="upload-icon">＋</span><strong>{customImage ? customImage.name : "上传你想绘制的图片"}</strong><small>管理员会联系你报价，图片仅你和管理员可见</small></label>
       {error && <p className="error">{error}</p>}<button className="primary" disabled={!date || (!choice && !customImage)} onClick={() => setStep("details")}>继续填写资料</button><button className="back-button" onClick={() => setStep("notice")}>返回注意事项</button></section>}
     {step === "details" && <section className="content narrow"><div className="eyebrow">STEP 02 · 联系方式</div><h1>填写预约资料</h1><p className="lead">预约日期：{date}</p><form onSubmit={submitBooking} className="form"><label>姓名<input required maxLength={100} value={name} onChange={e => setName(e.target.value)} placeholder="请输入姓名" /></label><label>电话号码<input required type="tel" maxLength={40} value={phone} onChange={e => setPhone(e.target.value)} placeholder="请输入电话号码" /></label><div className="summary"><span>预约内容</span><strong>{customImage ? `自定义图片：${customImage.name}（待联系报价）` : products.find(p => p.id === choice)?.name}</strong></div>{error && <p className="error">{error}</p>}<button className="primary full" disabled={busy}>{busy ? "正在提交…" : "确认预约"}</button><button type="button" className="back-button" onClick={() => setStep("booking")}>返回修改</button></form></section>}
-    {step === "success" && order && <section className="content narrow centered"><div className="success-mark">✓</div><div className="eyebrow">预约成功</div><h1>预约已记录</h1><p className="lead">请保存你的预约序号。</p><div className="number-card"><small>预约序号</small><strong>{order.id}</strong></div><div className="summary left"><span>{order.appointment_date}</span><strong>{order.product_name || "自定义图片（待联系报价）"}</strong><span>{order.name} · {order.phone}</span></div><button className="primary full" onClick={loadOrders}>查看我的预约</button></section>}
+    {step === "success" && order && <section className="content narrow centered">
+      <div className="success-mark">✓</div><div className="eyebrow">预约成功</div><h1>预约已记录</h1><p className="lead">请保存你的预约序号。</p>
+      <div className="number-card"><small>预约序号</small><strong>{order.id}</strong></div>
+      <div className="summary left"><span>{order.appointment_date}</span><strong>{order.product_name || "自定义图片（待联系报价）"}</strong><span>{order.name} · {order.phone}</span></div>
+      <div className="care-guide">
+        <h2>注意事项‼️</h2>
+        <section className="care-section">
+          <h3>刚画完（0–2小时）</h3>
+          <ul>
+            <li><strong>等晾干：</strong>期间不要摸、不要蹭，静置30分钟～1小时，直到完全干透、不粘手。</li>
+            <li><strong>不碰水、不出汗：</strong>2小时内绝不沾水、不洗澡，也不要大量出汗。</li>
+            <li><strong>不抠、不撕：</strong>干后可能起皮、裂块，别用手抠或撕；撕掉会让图案缺失、颜色变浅。</li>
+          </ul>
+        </section>
+        <section className="care-section">
+          <h3>清洗（2小时后）</h3>
+          <ul>
+            <li><strong>流动清水冲：</strong>轻轻冲洗并揉到没有滑腻感、没有膏体残留。</li>
+            <li><strong>轻柔清洁：</strong>别用湿巾或毛巾大力擦，避免晕染、糊边。</li>
+            <li><strong>别用指甲刮：</strong>容易染到指甲，也可能刮伤图案。</li>
+            <li><strong>刚洗很淡是正常的哦～</strong></li>
+          </ul>
+        </section>
+        <section className="care-section">
+          <h3>反色期（1～2天）</h3>
+          <ul>
+            <li><strong>少泡水、少搓：</strong>洗手快速冲，不泡澡、不游泳、不蒸桑拿，避免加速掉色。</li>
+            <li><strong>避免摩擦：</strong>少摸、少蹭衣服，少戴紧的手环或手套。</li>
+            <li><strong>保湿但不油：</strong>可涂轻薄无香精乳液；别涂厚凡士林或橄榄油，以免影响留色。</li>
+            <li><strong>注意防晒：</strong>暴晒会让颜色变浅、发黄。</li>
+          </ul>
+        </section>
+        <section className="care-section care-warning">
+          <h3>禁忌⚠️</h3>
+          <ul>
+            <li>❌ 不用酒精、卸妆水或湿巾擦拭，也别用湿巾／毛巾大力擦。</li>
+            <li>❌ 不抠、不撕、不大力搓；不泡温泉、游泳或长时间泡水。</li>
+            <li>❌ 不涂厚油，不暴晒。</li>
+          </ul>
+        </section>
+        <p className="care-duration">留色参考：7–14天</p>
+      </div>
+      <button className="primary full" onClick={loadOrders}>查看我的预约</button>
+    </section>}
     {step === "orders" && <section className="content"><div className="eyebrow">MY BOOKINGS</div><h1>我的预约</h1><p className="lead">仅显示此设备提交的预约。</p>{error && <p className="error">{error}</p>}{orders.length ? <div className="order-list">{orders.map(item => <article className="order-card" key={item.id}><div className="order-title"><strong>预约 #{item.id}</strong><span className={`status ${item.status}`}>{statusLabel(item.status)}</span></div><p>{item.appointment_date} · {item.product_name || "自定义图片"}</p><p>{item.name} · {item.phone}</p>{item.price && <p>{item.price}</p>}{item.custom_image_url && <a className="private-image" href={item.custom_image_url} target="_blank" rel="noreferrer"><img src={item.custom_image_url} alt="预约自定义图片" /><span>查看自定义图片</span></a>}</article>)}</div> : <div className="empty">此设备暂无预约记录。</div>}<button className="back-button" onClick={() => setStep("notice")}>返回首页</button></section>}
     <footer>海纳手绘预约</footer>
   </main>;
