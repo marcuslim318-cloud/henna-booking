@@ -19,6 +19,18 @@ create unique index if not exists one_active_booking_per_device_date
 
 alter table public.orders enable row level security;
 
+create table if not exists public.booking_settings (
+  singleton boolean primary key default true check (singleton),
+  is_open boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+
+insert into public.booking_settings (singleton, is_open)
+values (true, true)
+on conflict (singleton) do nothing;
+
+alter table public.booking_settings enable row level security;
+
 create table if not exists public.booking_sequence (
   singleton boolean primary key default true check (singleton),
   last_number bigint not null default 0
@@ -45,7 +57,17 @@ set search_path = public
 as $$
 declare
   next_number bigint;
+  channel_is_open boolean;
 begin
+  select is_open into channel_is_open
+  from public.booking_settings
+  where singleton = true
+  for share;
+
+  if channel_is_open is distinct from true then
+    raise exception 'booking_channel_closed';
+  end if;
+
   perform pg_advisory_xact_lock(hashtextextended(p_device_id::text || p_appointment_date::text, 0));
   if exists (
     select 1 from public.orders

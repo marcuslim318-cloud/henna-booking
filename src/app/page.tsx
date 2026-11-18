@@ -69,12 +69,16 @@ export default function Home() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState<boolean | null>(null);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("henna_last_order");
     if (saved) {
       try { setOrder(JSON.parse(saved) as Order); } catch {}
     }
+    fetch("/api/booking-status", { cache: "no-store" }).then(readResponse).then(data => {
+      if (typeof data.isOpen === "boolean") setBookingOpen(data.isOpen);
+    }).catch(() => setBookingOpen(false));
   }, []);
 
   async function loadOrders() {
@@ -104,7 +108,11 @@ export default function Home() {
       const data = await readResponse(response);
       if (!response.ok) throw new Error(data.error || "预约提交失败");
       setOrder(data.order); sessionStorage.setItem("henna_last_order", JSON.stringify(data.order)); setStep("success");
-    } catch (e) { setError(e instanceof Error ? e.message : "预约提交失败"); }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "预约提交失败";
+      if (message.includes("预约通道已关闭")) { setBookingOpen(false); setStep("booking"); }
+      setError(message);
+    }
     finally { setBusy(false); }
   }
 
@@ -114,10 +122,10 @@ export default function Home() {
   return <main className="shell">
     <header className="topbar"><a className="brand" href="/">海纳 <span>手绘预约</span></a><button className="text-button" onClick={loadOrders} disabled={busy}>我的预约</button></header>
     {step === "notice" && <section className="hero"><div className="heritage-banner"><div className="banner-copy"><span>HENNA ART · MALAYSIA</span><strong>海纳手绘</strong><i>以花纹，留住一刻南洋时光</i></div></div><div className="eyebrow">HENNA · APPOINTMENT</div><h1>预约前，请先了解这些事项</h1><p className="lead">让我们为你的手绘预约安排得更顺利。</p><div className="notice-card"><ol>{noticeItems.map(item => <li key={item}>{item}</li>)}</ol><button className="primary full" onClick={() => setStep("booking")}>已阅读并同意</button></div><a className="admin-link" href="/admin">管理员入口</a></section>}
-    {step === "booking" && <section className="content"><div className="eyebrow">STEP 01 · 选择预约内容</div><h1>选一个预约日期</h1><p className="lead">可预约 2026 年 11 月 21 日或 22 日。</p><div className="date-grid">{availableDates.map(d => <button key={d} className={`date-card ${date === d ? "selected" : ""}`} onClick={() => setDate(d)}><span>{d.slice(5).replace("-", " / ")}</span><small>2026 年 11 月</small></button>)}</div>{availableDates.length === 0 && <p className="empty">目前没有可预约日期。</p>}
+    {step === "booking" && (bookingOpen === false ? <section className="content narrow centered"><div className="eyebrow">BOOKING CLOSED</div><h1>预约通道已关闭</h1><p className="lead">暂时无法提交新的预约，请稍后再来查看。</p><button className="back-button" onClick={() => setStep("notice")}>返回首页</button></section> : bookingOpen === null ? <section className="content narrow centered"><p className="lead">正在确认预约通道状态…</p></section> : <section className="content"><div className="eyebrow">STEP 01 · 选择预约内容</div><h1>选一个预约日期</h1><p className="lead">可预约 2026 年 11 月 21 日或 22 日。</p><div className="date-grid">{availableDates.map(d => <button key={d} className={`date-card ${date === d ? "selected" : ""}`} onClick={() => setDate(d)}><span>{d.slice(5).replace("-", " / ")}</span><small>2026 年 11 月</small></button>)}</div>{availableDates.length === 0 && <p className="empty">目前没有可预约日期。</p>}
       <h2>选择手绘款式 <small>单选</small></h2><div className="product-grid">{products.length ? products.map(product => <button key={product.id} className={`product-card ${choice === product.id ? "selected" : ""}`} onClick={() => { setChoice(product.id); setCustomImage(null); }}>{product.imageUrl ? <img className="image-placeholder" src={product.imageUrl} alt={product.name} /> : <span className="image-placeholder">图片待补</span>}<strong>{product.name}</strong><span>{product.price}</span></button>) : <div className="empty wide">款式目录暂未填写，当前可提交自定义图片预约。</div>}</div>
       <h2>自定义图片 <small>可选</small></h2><label className={`upload-box ${customImage ? "uploaded" : ""}`}><input type="file" accept="image/*" onChange={e => { const file = e.target.files?.[0] || null; setCustomImage(file); if (file) setChoice(""); }} /><span className="upload-icon">＋</span><strong>{customImage ? customImage.name : "上传你想绘制的图片"}</strong><small>管理员会联系你报价，图片仅你和管理员可见</small></label>
-      {error && <p className="error">{error}</p>}<button className="primary" disabled={!date || (!choice && !customImage)} onClick={() => setStep("details")}>继续填写资料</button><button className="back-button" onClick={() => setStep("notice")}>返回注意事项</button></section>}
+      {error && <p className="error">{error}</p>}<button className="primary" disabled={!date || (!choice && !customImage)} onClick={() => setStep("details")}>继续填写资料</button><button className="back-button" onClick={() => setStep("notice")}>返回注意事项</button></section>)}
     {step === "details" && <section className="content narrow"><div className="eyebrow">STEP 02 · 联系方式</div><h1>填写预约资料</h1><p className="lead">预约日期：{date}</p><form onSubmit={submitBooking} className="form"><label>姓名<input required maxLength={100} value={name} onChange={e => setName(e.target.value)} placeholder="请输入姓名" /></label><label>电话号码<input required type="tel" maxLength={40} value={phone} onChange={e => setPhone(e.target.value)} placeholder="请输入电话号码" /></label><div className="summary"><span>预约内容</span><strong>{customImage ? `自定义图片：${customImage.name}（待联系报价）` : products.find(p => p.id === choice)?.name}</strong></div>{error && <p className="error">{error}</p>}<button className="primary full" disabled={busy}>{busy ? "正在提交…" : "确认预约"}</button><button type="button" className="back-button" onClick={() => setStep("booking")}>返回修改</button></form></section>}
     {step === "success" && order && <section className="content narrow centered">
       <div className="success-mark">✓</div><div className="eyebrow">预约成功</div><h1>预约已记录</h1><p className="lead">请保存你的预约序号。</p>

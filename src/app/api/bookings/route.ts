@@ -10,6 +10,9 @@ export async function POST(request: NextRequest) {
   if (!/^[0-9a-f-]{36}$/i.test(deviceId)) return NextResponse.json({ error: "设备信息无效，请刷新页面重试。" }, { status: 400 });
   let customImagePath: string | null = null;
   try {
+    const [bookingSetting] = await db<{ is_open: boolean }[]>("booking_settings?select=is_open&singleton=eq.true");
+    if (!bookingSetting) throw new Error("Booking settings row is missing");
+    if (!bookingSetting.is_open) return NextResponse.json({ error: "预约通道已关闭，暂时无法提交新的预约。" }, { status: 403 });
     const { appointmentDate, productId, imageData, name, phone } = await request.json();
     if (!bookingDates.includes(appointmentDate)) return NextResponse.json({ error: "请选择开放预约的日期。" }, { status: 400 });
     if (appointmentDate < new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur" }).format(new Date())) return NextResponse.json({ error: "过去日期不能预约。" }, { status: 400 });
@@ -33,6 +36,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (customImagePath) await storage(`object/henna-orders/${customImagePath}`, { method: "DELETE" }).catch(() => null);
     const message = error instanceof Error ? error.message : "";
+    if (message.includes("booking_channel_closed")) return NextResponse.json({ error: "预约通道已关闭，暂时无法提交新的预约。" }, { status: 403 });
     if (message.includes("one_active_booking_per_device_date") || message.includes("23505")) return NextResponse.json({ error: "此设备已经预约过该日期。" }, { status: 409 });
     console.error("Booking request failed", error);
     return NextResponse.json({ error: "预约暂时无法提交，请稍后重试。" }, { status: 503 });

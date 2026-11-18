@@ -5,7 +5,11 @@ import { db, storage, supabaseUrl } from "@/lib/supabase";
 export async function GET() {
   if (!isAdmin()) return NextResponse.json({ error: "请先登录管理员账号。" }, { status: 401 });
   try {
-    const orders = await db<any[]>("orders?select=*&order=id.asc");
+    const [orders, settings] = await Promise.all([
+      db<any[]>("orders?select=*&order=id.asc"),
+      db<{ is_open: boolean }[]>("booking_settings?select=is_open&singleton=eq.true")
+    ]);
+    if (!settings[0]) throw new Error("Booking settings row is missing");
     const stats = orders.reduce((sum, order) => {
       sum.total++;
       sum[order.status] = (sum[order.status] || 0) + 1;
@@ -18,7 +22,7 @@ export async function GET() {
         return { ...order, custom_image_url: `${supabaseUrl}/storage/v1${signed.signedURL}` };
       } catch { return order; }
     }));
-    return NextResponse.json({ orders: withImages, stats });
+    return NextResponse.json({ orders: withImages, stats, bookingOpen: settings[0].is_open });
   } catch (error) {
     console.error("Admin orders request failed", error);
     return NextResponse.json({ error: "无法读取预约数据，请检查 Vercel 中的 Supabase 环境变量。" }, { status: 503 });
